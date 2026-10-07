@@ -1,6 +1,5 @@
 .build/
-Finances.xcodeproj/
+Workouts.xcodeproj/
 xcuserdata/
 *.xcuserstate
 .DS_Store
-

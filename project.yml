@@ -1,78 +1,144 @@
-name: Finances
+name: Workouts
 
 options:
   bundleIdPrefix: com.productivitysuite
   deploymentTarget:
     macOS: "14.0"
+    iOS: "17.0"
   createIntermediateGroups: true
 
 settings:
   base:
     SWIFT_VERSION: "6.0"
-    MACOSX_DEPLOYMENT_TARGET: "14.0"
+
+packages:
+  ProductivityUI:
+    path: ../../packages/ProductivityUI
+  ProductivityRoutineKit:
+    path: ../../packages/ProductivityRoutineKit
+  ProductivityCloudKit:
+    path: ../../packages/ProductivityCloudKit
 
 targets:
-  Finances:
+  Workouts:
     type: application
     platform: macOS
     deploymentTarget: "14.0"
     sources:
-      - path: Sources/Finances
-        excludes: [Resources]
-    resources:
-      - path: Sources/Finances/Resources
+      - path: Sources/Shared
+      - path: Sources/macOS
+      - path: Resources/Assets.xcassets
+        buildPhase: resources
     dependencies:
-      - sdk: Charts.framework
-      - sdk: PDFKit.framework
-      - sdk: Vision.framework
+      - package: ProductivityUI
+      - package: ProductivityRoutineKit
+      - package: ProductivityCloudKit
+      - sdk: AVKit.framework
+      - sdk: CloudKit.framework
     entitlements:
-      path: Sources/Finances/Finances.entitlements
-      properties:
-        com.apple.security.app-sandbox: true
-        com.apple.security.files.user-selected.read-only: true
+      path: Sources/macOS/Platform/Workouts.entitlements
     info:
-      path: Sources/Finances/Info.plist
+      path: Sources/macOS/Platform/Info.plist
       properties:
-        CFBundleDisplayName: Finances
-        CFBundleShortVersionString: "1.0"
-        CFBundleVersion: "1"
-        LSApplicationCategoryType: public.app-category.finance
+        CFBundleDisplayName: Workouts
+        LSApplicationCategoryType: public.app-category.healthcare-fitness
         LSMinimumSystemVersion: $(MACOSX_DEPLOYMENT_TARGET)
-        NSHighResolutionCapable: true
         NSPrincipalClass: NSApplication
+        CFBundleURLTypes:
+          - CFBundleURLName: com.productivitysuite.workouts.actions
+            CFBundleURLSchemes: [productivity-workouts]
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.productivitysuite.finances
-        PRODUCT_NAME: Finances
+        PRODUCT_BUNDLE_IDENTIFIER: com.productivitysuite.workouts
+        PRODUCT_NAME: Workouts
         CODE_SIGN_STYLE: Automatic
         ENABLE_APP_SANDBOX: YES
         ENABLE_HARDENED_RUNTIME: YES
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
 
-  FinancesTests:
+  WorkoutsTests:
     type: bundle.unit-test
     platform: macOS
     deploymentTarget: "14.0"
     sources:
-      - path: Tests/FinancesTests
+      - path: Tests/SharedTests
+      - path: Tests/macOSTests
     dependencies:
-      - target: Finances
+      - target: Workouts
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.productivitysuite.finances.tests
+        PRODUCT_BUNDLE_IDENTIFIER: com.productivitysuite.workouts.tests
         GENERATE_INFOPLIST_FILE: YES
 
+  WorkoutsIOS:
+    type: application
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - path: Sources/Shared
+      - path: Sources/iOS
+      - path: Resources/Assets.xcassets
+        buildPhase: resources
+    dependencies:
+      - package: ProductivityUI
+      - package: ProductivityRoutineKit
+      - package: ProductivityCloudKit
+      - sdk: AVKit.framework
+      - sdk: CloudKit.framework
+      - sdk: HealthKit.framework
+    entitlements:
+      path: Sources/iOS/Platform/WorkoutsIOS.entitlements
+    info:
+      path: Sources/iOS/Platform/Info.plist
+      properties:
+        CFBundleDisplayName: Workouts
+        NSHealthShareUsageDescription: Workouts reads body mass and matching workouts to improve calorie estimates and prevent duplicate activity records.
+        NSHealthUpdateUsageDescription: Workouts saves completed sessions, active energy, duration, and distance to Apple Health when you enable Health integration.
+        CFBundleURLTypes:
+          - CFBundleURLName: com.productivitysuite.workouts.actions
+            CFBundleURLSchemes: [productivity-workouts]
+        LSApplicationQueriesSchemes: [productivity-routines]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.productivitysuite.workouts.ios
+        PRODUCT_NAME: Workouts
+        PRODUCT_MODULE_NAME: WorkoutsIOS
+        CODE_SIGN_STYLE: Automatic
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        TARGETED_DEVICE_FAMILY: "1,2"
+
+  WorkoutsIOSTests:
+    type: bundle.unit-test
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - path: Tests/SharedTests
+      - path: Tests/iOSTests
+    dependencies:
+      - target: WorkoutsIOS
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.productivitysuite.workouts.ios.tests
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_HOST: $(BUILT_PRODUCTS_DIR)/Workouts.app/Workouts
+        BUNDLE_LOADER: $(TEST_HOST)
+
 schemes:
-  Finances:
+  Workouts:
     shared: true
     build:
       targets:
-        Finances: all
-        FinancesTests: [test]
-    run:
-      config: Debug
-    test:
-      config: Debug
-      targets: [FinancesTests]
-    archive:
-      config: Release
-
+        Workouts: all
+        WorkoutsTests: [test]
+    run: { config: Debug }
+    test: { config: Debug, targets: [WorkoutsTests] }
+    archive: { config: Release }
+  WorkoutsIOS:
+    shared: true
+    build:
+      targets:
+        WorkoutsIOS: all
+        WorkoutsIOSTests: [test]
+    run: { config: Debug }
+    test: { config: Debug, targets: [WorkoutsIOSTests] }
+    archive: { config: Release }
