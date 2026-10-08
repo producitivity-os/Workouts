@@ -12,6 +12,8 @@ final class WorkoutsAppState {
     private(set) var templates: [WorkoutTemplateSummary] = []
     private(set) var sessions: [WorkoutSessionSummary] = []
     private(set) var activeSession: WorkoutSessionSummary?
+    private(set) var activeLogs: [WorkoutExerciseLogSummary] = []
+    private(set) var completedRecap: WorkoutSessionSummary?
     var isReady = false
     var errorMessage: String?
     var cloudStatus = "Local only"
@@ -43,6 +45,7 @@ final class WorkoutsAppState {
         templates = try await store.templates()
         sessions = try await store.sessions()
         activeSession = try await store.activeSession()
+        activeLogs = try await store.activeLogs()
     }
 
     func saveExercise(_ draft: ExerciseDraft) async {
@@ -73,12 +76,13 @@ final class WorkoutsAppState {
     func completeSession(actualCalories: Double? = nil, healthKitID: String? = nil) async {
         guard let session = activeSession else { return }
         do {
+            let estimatedSession = try await store.updateEstimate(id: session.id) ?? session
             let healthResult = if let healthCompletionHandler {
-                await healthCompletionHandler(session)
+                await healthCompletionHandler(estimatedSession)
             } else {
                 (calories: actualCalories, identifier: healthKitID)
             }
-            _ = try await store.completeSession(id: session.id, actualCalories: healthResult.calories, healthKitID: healthResult.identifier)
+            completedRecap = try await store.completeSession(id: session.id, actualCalories: healthResult.calories, healthKitID: healthResult.identifier)
             if let routineInvocationID, let integration = try? RoutineIntegrationStore() {
                 _ = try? await integration.updateInvocation(id: routineInvocationID, state: .completed, message: "Workout completed")
                 self.routineInvocationID = nil
@@ -86,6 +90,15 @@ final class WorkoutsAppState {
             try await refresh()
         } catch { errorMessage = error.localizedDescription }
     }
+
+    func setCompletedSets(logID: UUID, count: Int) async {
+        do {
+            try await store.setCompletedSets(logID: logID, count: count)
+            try await refresh()
+        } catch { errorMessage = error.localizedDescription }
+    }
+
+    func dismissRecap() { completedRecap = nil }
 
     func handleRoutineInvocation(_ url: URL) async -> RoutineInvocation? {
         do {

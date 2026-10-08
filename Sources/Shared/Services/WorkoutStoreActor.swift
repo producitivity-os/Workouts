@@ -178,6 +178,34 @@ actor WorkoutStoreActor {
         return try modelContext.fetch(descriptor).first.map { summary($0) }
     }
 
+    func activeLogs() throws -> [WorkoutExerciseLogSummary] {
+        guard let session = try activeSessionRecord() else { return [] }
+        var planned: [UUID: Int] = [:]
+        if let templateID = session.templateID,
+           let template = try modelContext.fetch(FetchDescriptor<WorkoutTemplate>(predicate: #Predicate { $0.id == templateID })).first {
+            for block in template.blocks {
+                guard let exerciseID = block.exercise?.id else { continue }
+                planned[exerciseID, default: 0] += max(1, block.targetSets)
+            }
+        } else {
+            planned = [:]
+        }
+        return session.logs.sorted { $0.position < $1.position }.map {
+            WorkoutExerciseLogSummary(
+                id: $0.id,
+                exerciseID: $0.exerciseID,
+                exerciseName: $0.exerciseName,
+                position: $0.position,
+                completedSets: $0.completedSets,
+                plannedSets: planned[$0.exerciseID] ?? max(1, $0.completedSets),
+                repetitions: $0.repetitions,
+                distanceMeters: $0.distanceMeters,
+                durationSeconds: $0.durationSeconds,
+                weightKilograms: $0.weightKilograms
+            )
+        }
+    }
+
     @discardableResult
     func startSession(templateID: UUID?, name: String, source: WorkoutSessionSource = .live) throws -> UUID {
         let open = try modelContext.fetch(FetchDescriptor<WorkoutSession>(predicate: #Predicate {
@@ -186,8 +214,44 @@ actor WorkoutStoreActor {
         for session in open { pause(session, at: .now) }
         let session = WorkoutSession(templateID: templateID, workoutName: name, source: source)
         modelContext.insert(session)
+        if let templateID,
+           let template = try modelContext.fetch(FetchDescriptor<WorkoutTemplate>(predicate: #Predicate { $0.id == templateID })).first {
+            session.logs = template.blocks.sorted { $0.position < $1.position }.compactMap { block in
+                guard let exercise = block.exercise else { return nil }
+                return ExerciseLog(
+                    exerciseID: exercise.id,
+                    exerciseName: exercise.name,
+                    position: block.position,
+                    completedSets: 0,
+                    repetitions: block.targetRepetitions,
+                    distanceMeters: block.targetDistanceMeters,
+                    durationSeconds: block.targetDurationSeconds ?? 0,
+                    weightKilograms: block.targetWeightKilograms,
+                    session: session
+                )
+            }
+        }
         try modelContext.save()
         return session.id
+    }
+
+    func setCompletedSets(logID: UUID, count: Int) throws {
+        guard let log = try modelContext.fetch(FetchDescriptor<ExerciseLog>(predicate: #Predicate { $0.id == logID })).first else { return }
+        log.completedSets = max(0, count)
+        try modelContext.save()
+    }
+
+    func updateEstimate(id: UUID, at date: Date = .now) throws -> WorkoutSessionSummary? {
+        guard let session = try findSession(id) else { return nil }
+        let elapsed = committedElapsed(session, at: date)
+        let preferences = try modelContext.fetch(FetchDescriptor<WorkoutPreferences>()).first
+        let mass = preferences?.bodyMassKilograms ?? 70
+        let exerciseIDs = Set(session.logs.map(\.exerciseID))
+        let exercises = try modelContext.fetch(FetchDescriptor<ExerciseRecord>()).filter { exerciseIDs.contains($0.id) }
+        let averageMET = exercises.isEmpty ? 5 : exercises.reduce(0) { $0 + $1.metValue } / Double(exercises.count)
+        session.estimatedCalories = WorkoutCalorieEstimator.estimate(met: averageMET, bodyMassKilograms: mass, durationSeconds: elapsed)
+        try modelContext.save()
+        return summary(session)
     }
 
     func pauseSession(id: UUID, at date: Date = .now) throws {
@@ -210,6 +274,7 @@ actor WorkoutStoreActor {
     @discardableResult
     func completeSession(id: UUID, at date: Date = .now, actualCalories: Double? = nil, healthKitID: String? = nil) throws -> WorkoutSessionSummary? {
         guard let session = try findSession(id) else { return nil }
+        _ = try updateEstimate(id: id, at: date)
         if session.state == .active, let activeSince = session.activeSince {
             session.accumulatedSeconds += max(0, date.timeIntervalSince(activeSince))
         }
@@ -243,6 +308,17 @@ actor WorkoutStoreActor {
     private func findSession(_ id: UUID) throws -> WorkoutSession? {
         let descriptor = FetchDescriptor<WorkoutSession>(predicate: #Predicate { $0.id == id })
         return try modelContext.fetch(descriptor).first
+    }
+
+    private func activeSessionRecord() throws -> WorkoutSession? {
+        let descriptor = FetchDescriptor<WorkoutSession>(predicate: #Predicate {
+            $0.stateRaw == "active" || $0.stateRaw == "paused"
+        }, sortBy: [SortDescriptor(\.startedAt, order: .reverse)])
+        return try modelContext.fetch(descriptor).first
+    }
+
+    private func committedElapsed(_ session: WorkoutSession, at date: Date) -> Double {
+        session.accumulatedSeconds + (session.state == .active ? max(0, date.timeIntervalSince(session.activeSince ?? date)) : 0)
     }
 
     private func pause(_ session: WorkoutSession, at date: Date) {

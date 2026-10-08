@@ -4,6 +4,7 @@ import SwiftUI
 
 struct WorkoutTodayView: View {
     @Environment(WorkoutsAppState.self) private var state
+    @State private var showsExerciseEditor = false
 
     var body: some View {
         ScrollView {
@@ -24,6 +25,16 @@ struct WorkoutTodayView: View {
                             Button("Finish") { Task { await state.completeSession() } }.buttonStyle(.borderedProminent)
                         }
                     }
+                    if !state.activeLogs.isEmpty {
+                        WorkoutZoningBar(
+                            workoutName: session.name,
+                            completedSets: state.activeLogs.reduce(0) { $0 + $1.completedSets },
+                            plannedSets: state.activeLogs.reduce(0) { $0 + $1.plannedSets }
+                        )
+                        ForEach(state.activeLogs) { log in
+                            WorkoutSetsCard(exercise: log) { count in Task { await state.setCompletedSets(logID: log.id, count: count) } }
+                        }
+                    }
                 } else if let template = state.templateForToday() ?? state.templates.first {
                     ProductivitySectionCard("Scheduled") {
                         Text(template.name).font(.title2.bold())
@@ -39,6 +50,20 @@ struct WorkoutTodayView: View {
                     ProductivityMetricCard(title: "Completed", value: "\(state.sessions.filter { $0.state == .completed }.count)", tint: .green)
                 }
             }.padding(ProductivitySpacing.page)
+        }
+        .overlay(alignment: .bottomTrailing) {
+            MorphingActionMenu(actions: [
+                .init(id: "quick", icon: "bolt.fill", title: "Quick Workout"),
+                .init(id: "exercise", icon: "dumbbell.fill", title: "New Exercise")
+            ]) { item in
+                if item.id == "quick" { Task { await state.start(template: nil) } }
+                else { showsExerciseEditor = true }
+            }
+            .padding(18)
+        }
+        .sheet(isPresented: $showsExerciseEditor) { ExerciseEditorView(exerciseID: nil).environment(state) }
+        .sheet(item: Binding(get: { state.completedRecap }, set: { if $0 == nil { state.dismissRecap() } })) { session in
+            SessionCompleteRecap(session: session) { state.dismissRecap() }
         }
     }
 
@@ -124,20 +149,41 @@ struct WorkoutHistoryView: View {
     @Environment(WorkoutsAppState.self) private var state
 
     var body: some View {
-        VStack(spacing: 0) {
-            ProductivityPageHeader("History", eyebrow: "Progress").padding(ProductivitySpacing.page)
-            List(state.sessions) { session in
-                HStack {
-                    VStack(alignment: .leading) {
-                        Text(session.name).font(.headline)
-                        Text(session.startedAt.formatted(date: .abbreviated, time: .shortened)).foregroundStyle(.secondary)
+        ScrollView {
+            VStack(alignment: .leading, spacing: ProductivitySpacing.section) {
+                ProductivityPageHeader("History", eyebrow: "Progress")
+                if state.sessions.isEmpty {
+                    ProductivityEmptyState(icon: .activity, title: "No history", message: "Completed workouts will appear here.")
+                } else {
+                    CoreActivityMetrics(metrics: historyMetrics)
+                    ProductivitySectionCard("Workout duration") {
+                        DynamicRangeBarChart(data: chartData, range: .week, barsColor: .purple, unit: "m").frame(height: 180)
                     }
-                    Spacer()
-                    Text(session.elapsedSeconds.formattedDuration).monospacedDigit()
-                    ProductivityStatusBadge(session.state.rawValue.capitalized, tint: session.state == .completed ? .green : .orange)
-                }.padding(.vertical, 4)
-            }
-            .overlay { if state.sessions.isEmpty { ProductivityEmptyState(icon: .activity, title: "No history", message: "Completed workouts will appear here.") } }
+                    ForEach(state.sessions) { WorkoutExpandedCard(workout: $0) }
+                }
+            }.padding(ProductivitySpacing.page)
         }
+    }
+
+    private var chartData: [DynamicBarChartData] {
+        let calendar = Calendar.current
+        let start = calendar.date(byAdding: .day, value: -6, to: calendar.startOfDay(for: .now)) ?? .now
+        return (0..<7).compactMap { offset in
+            guard let date = calendar.date(byAdding: .day, value: offset, to: start) else { return nil }
+            let seconds = state.sessions.filter { calendar.isDate($0.startedAt, inSameDayAs: date) }.reduce(0) { $0 + $1.elapsedSeconds }
+            return DynamicBarChartData(date: date, value: seconds / 60)
+        }
+    }
+
+    private var historyMetrics: [CoreActivityMetric] {
+        let completed = state.sessions.filter { $0.state == .completed }
+        let weekly = completed.filter { $0.startedAt >= Calendar.current.date(byAdding: .day, value: -7, to: .now) ?? .now }
+        let minutes = weekly.reduce(0) { $0 + $1.elapsedSeconds } / 60
+        let calories = weekly.reduce(0) { $0 + ($1.actualCalories ?? $1.estimatedCalories) }
+        return [
+            .init(label: "Workouts", value: min(100, Double(weekly.count) / 4 * 100), targetZone: 75...100, ramp: [.blue, .cyan, .blue]),
+            .init(label: "Minutes", value: min(100, minutes / 150 * 100), targetZone: 75...100, ramp: [.green, .mint, .green]),
+            .init(label: "Energy", value: min(100, calories / 1_500 * 100), ramp: [.orange, .yellow, .orange])
+        ]
     }
 }

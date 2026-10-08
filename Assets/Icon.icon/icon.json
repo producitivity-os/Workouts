@@ -1,0 +1,130 @@
+{
+  "fill" : {
+    "linear-gradient" : [
+      "srgb:1.00000,0.44135,0.00000,1.00000",
+      "srgb:1.00000,0.14913,0.00000,1.00000"
+    ]
+  },
+  "groups" : [
+    {
+      "layers" : [
+        {
+          "fill" : {
+            "solid" : "srgb:1.00000,1.00000,1.00000,1.00000"
+          },
+          "hidden" : true,
+          "image-name" : "dumbell-fitness-svgrepo-com.svg",
+          "name" : "dumbell-fitness-svgrepo-com",
+          "opacity" : 0.85
+        },
+        {
+          "fill" : {
+            "solid" : "srgb:1.00000,1.00000,1.00000,1.00000"
+          },
+          "hidden" : true,
+          "image-name" : "dumbbell-training-svgrepo-com.svg",
+          "name" : "dumbbell-training-svgrepo-com",
+          "opacity" : 0.85
+        },
+        {
+          "fill" : {
+            "solid" : "srgb:1.00000,1.00000,1.00000,1.00000"
+          },
+          "hidden" : true,
+          "image-name" : "dumbbell-svgrepo-com.svg",
+          "name" : "dumbbell-svgrepo-com",
+          "opacity" : 0.85
+        },
+        {
+          "fill" : {
+            "solid" : "srgb:1.00000,1.00000,1.00000,1.00000"
+          },
+          "hidden" : true,
+          "image-name" : "dumbbell-svgrepo-com-3.svg",
+          "name" : "dumbbell-svgrepo-com-3",
+          "opacity" : 0.85
+        },
+        {
+          "blend-mode" : "multiply",
+          "fill" : {
+            "linear-gradient" : [
+              "srgb:1.00000,1.00000,1.00000,0.65000",
+              "srgb:1.00000,1.00000,1.00000,1.00000"
+            ],
+            "orientation" : {
+              "start" : {
+                "x" : 0.5,
+                "y" : 0.1865721527287209
+              },
+              "stop" : {
+                "x" : 0.5,
+                "y" : 1.1083814003200272
+              }
+            }
+          },
+          "hidden" : false,
+          "image-name" : "dumbbell-svgrepo-com-2.svg",
+          "name" : "dumbbell-svgrepo-com-2",
+          "opacity" : 1
+        },
+        {
+          "fill" : {
+            "solid" : "srgb:1.00000,1.00000,1.00000,1.00000"
+          },
+          "hidden" : true,
+          "image-name" : "dumbbell-pixel-variant-svgrepo-com.svg",
+          "name" : "dumbbell-pixel-variant-svgrepo-com",
+          "opacity" : 0.85
+        },
+        {
+          "fill" : {
+            "solid" : "srgb:1.00000,1.00000,1.00000,1.00000"
+          },
+          "hidden" : true,
+          "image-name" : "dumbbell-6-svgrepo-com.svg",
+          "name" : "dumbbell-6-svgrepo-com",
+          "opacity" : 0.85,
+          "position" : {
+            "scale" : 1,
+            "translation-in-points" : [
+              -1.6655535676403588,
+              -255.7146393470881
+            ]
+          }
+        },
+        {
+          "fill" : {
+            "solid" : "srgb:1.00000,1.00000,1.00000,1.00000"
+          },
+          "hidden" : true,
+          "image-name" : "biceps-svgrepo-com.svg",
+          "name" : "biceps-svgrepo-com",
+          "opacity" : 0.85
+        },
+        {
+          "fill" : {
+            "solid" : "srgb:1.00000,1.00000,1.00000,1.00000"
+          },
+          "hidden" : true,
+          "image-name" : "arm-muscles-silhouette-svgrepo-com.svg",
+          "name" : "arm-muscles-silhouette-svgrepo-com",
+          "opacity" : 0.85
+        }
+      ],
+      "shadow" : {
+        "kind" : "neutral",
+        "opacity" : 0.5
+      },
+      "translucency" : {
+        "enabled" : true,
+        "value" : 0.3
+      }
+    }
+  ],
+  "supported-platforms" : {
+    "circles" : [
+      "watchOS"
+    ],
+    "squares" : "shared"
+  }
+}

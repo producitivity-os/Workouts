@@ -30,6 +30,19 @@ struct WorkoutSessionSummary: Identifiable, Hashable, Sendable {
     let actualCalories: Double?
 }
 
+struct WorkoutExerciseLogSummary: Identifiable, Hashable, Sendable {
+    let id: UUID
+    let exerciseID: UUID
+    let exerciseName: String
+    let position: Int
+    let completedSets: Int
+    let plannedSets: Int
+    let repetitions: Int?
+    let distanceMeters: Double?
+    let durationSeconds: Double
+    let weightKilograms: Double?
+}
+
 struct ExerciseDraft: Sendable {
     var id: UUID?
     var name = ""
